@@ -1,0 +1,6 @@
+{
+  "name": "Chat with Nusrat jahan",
+  "description": "A WhatsApp-styled web application to support secure verification and messaging yourself, with live unlock number countdown, instructions, and interactive notification linkage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
