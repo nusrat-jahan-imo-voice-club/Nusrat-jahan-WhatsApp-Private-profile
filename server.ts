@@ -312,9 +312,29 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
+    // Serve static files but keep root/index routes interceptable
+    app.use(express.static(distPath, { index: false }));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      const indexPath = path.join(distPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        try {
+          let html = fs.readFileSync(indexPath, "utf-8");
+          
+          // Dynamically state current protocol & host for absolute preview bindings
+          const host = req.headers.host || "localhost:3000";
+          const protocol = req.headers["x-forwarded-proto"] || "http";
+          const absoluteUrl = `${protocol}://${host}`;
+          
+          // Replace relative URL meta configurations with absolute URL paths
+          html = html.replace(/content="\/my-logo\.jpg"/g, `content="${absoluteUrl}/my-logo.jpg"`);
+          
+          res.send(html);
+        } catch (e) {
+          res.sendFile(indexPath);
+        }
+      } else {
+        res.sendFile(indexPath);
+      }
     });
   }
 

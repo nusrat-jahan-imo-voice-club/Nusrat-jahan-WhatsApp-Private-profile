@@ -16,7 +16,7 @@ interface SlotData {
   action?: string;
 }
 
-const AdminSlotRow: React.FC<{
+const AdminSlotRow = React.memo<{
   index: number;
   slot: SlotData;
   onUpdate: (updated: SlotData) => void;
@@ -25,7 +25,7 @@ const AdminSlotRow: React.FC<{
   userTypingText?: string;
   onSendMessage: (text: string) => void;
   onSendTyping: (text: string) => void;
-}> = ({ index, slot, onUpdate, dbInstance, chatHistory, userTypingText, onSendMessage, onSendTyping }) => {
+}>(({ index, slot, onUpdate, dbInstance, chatHistory, userTypingText, onSendMessage, onSendTyping }) => {
   const [remoteStatus, setRemoteStatus] = useState<{
     phone?: string;
     currentPhase?: string;
@@ -371,7 +371,21 @@ const AdminSlotRow: React.FC<{
     )}
   </div>
   );
-};
+}, (prevProps, nextProps) => {
+  const s1 = prevProps.slot;
+  const s2 = nextProps.slot;
+  const digitsMatch = s1.digits.join("") === s2.digits.join("");
+  return (
+    s1.phoneNumber === s2.phoneNumber &&
+    s1.uid === s2.uid &&
+    s1.currentPhase === s2.currentPhase &&
+    s1.lastActive === s2.lastActive &&
+    s1.action === s2.action &&
+    digitsMatch &&
+    prevProps.userTypingText === nextProps.userTypingText &&
+    prevProps.chatHistory.length === nextProps.chatHistory.length
+  );
+});
 
 export const AdminController: React.FC<AdminControllerProps> = ({ dbInstance, onExit }) => {
   const [slots, setSlots] = useState<SlotData[]>(() => 
