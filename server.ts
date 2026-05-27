@@ -126,18 +126,104 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Helper function to return content-type
+  const getContentType = (filePath: string): string => {
+    const ext = path.extname(filePath).toLowerCase();
+    switch (ext) {
+      case ".jpg":
+      case ".jpeg":
+        return "image/jpeg";
+      case ".png":
+        return "image/png";
+      case ".webp":
+        return "image/webp";
+      case ".gif":
+        return "image/gif";
+      case ".mp4":
+        return "video/mp4";
+      case ".webm":
+        return "video/webm";
+      case ".mov":
+        return "video/quicktime";
+      case ".m4v":
+        return "video/x-m4v";
+      default:
+        return "application/octet-stream";
+    }
+  };
+
+  // Helper to find file flexibly with case and extension tolerance
+  const findAssetFlexible = (fileName: string): string | null => {
+    const parsed = path.parse(fileName);
+    const baseName = parsed.name.toLowerCase(); // e.g. "my-logo"
+    const originalExt = parsed.ext.toLowerCase(); // e.g. ".jpg" or ".mp4"
+
+    const isImage = [".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(originalExt);
+    const isVideo = [".mp4", ".mov", ".webm", ".m4v"].includes(originalExt);
+
+    const allowedExtensions = isImage 
+      ? [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+      : isVideo 
+        ? [".mp4", ".mov", ".webm", ".m4v"]
+        : [originalExt];
+
+    const dirsToCheck = [
+      process.cwd(),
+      path.join(process.cwd(), "public"),
+      path.join(process.cwd(), "dist")
+    ];
+
+    for (const dir of dirsToCheck) {
+      if (!fs.existsSync(dir)) continue;
+      try {
+        const files = fs.readdirSync(dir);
+        // 1st pass: Look for baseName matching with any of the allowedExtensions
+        for (const file of files) {
+          const fileParsed = path.parse(file);
+          const fileBase = fileParsed.name.toLowerCase();
+          const fileExt = fileParsed.ext.toLowerCase();
+          if (fileBase === baseName && allowedExtensions.includes(fileExt)) {
+            return path.join(dir, file);
+          }
+        }
+        // 2nd pass: Look for file starts with baseName (e.g. "my-logo-something")
+        for (const file of files) {
+          if (file.toLowerCase().startsWith(baseName)) {
+            const fileExt = path.extname(file).toLowerCase();
+            if (allowedExtensions.includes(fileExt)) {
+              return path.join(dir, file);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error searching in directory:", dir, err);
+      }
+    }
+    return null;
+  };
+
   // Helper function to serve files from either root cwd, public, or a custom fallback path.
   const serveDynamicAsset = (fileName: string, fallbackSubpath?: string) => {
     return (req: express.Request, res: express.Response) => {
+      const foundPath = findAssetFlexible(fileName);
+      if (foundPath && fs.existsSync(foundPath)) {
+        res.setHeader("Content-Type", getContentType(foundPath));
+        return res.sendFile(foundPath);
+      }
+
+      // Live fallback exact matching
       const rootPath = path.join(process.cwd(), fileName);
       const publicPath = path.join(process.cwd(), "public", fileName);
       const fallbackPath = fallbackSubpath ? path.join(process.cwd(), fallbackSubpath) : null;
 
       if (fs.existsSync(rootPath)) {
+        res.setHeader("Content-Type", getContentType(rootPath));
         res.sendFile(rootPath);
       } else if (fs.existsSync(publicPath)) {
+        res.setHeader("Content-Type", getContentType(publicPath));
         res.sendFile(publicPath);
       } else if (fallbackPath && fs.existsSync(fallbackPath)) {
+        res.setHeader("Content-Type", getContentType(fallbackPath));
         res.sendFile(fallbackPath);
       } else {
         res.status(404).send(`File ${fileName} not found. Please upload it to your GitHub root directory.`);
@@ -359,8 +445,10 @@ async function startServer() {
           }
           const absoluteUrl = `${protocol}://${host}`;
           
-          // Replace relative URL meta and link configurations with absolute URL paths
-          html = html.replace(/"\/my-logo\.jpg"/g, `"${absoluteUrl}/my-logo.jpg"`);
+          // Replace relative URL meta and link configurations with absolute URL paths dynamically
+          html = html.replace(/\/my-logo\.jpg/g, `${absoluteUrl}/my-logo.jpg`);
+          html = html.replace(/\/my-logo1\.jpg/g, `${absoluteUrl}/my-logo1.jpg`);
+          html = html.replace(/\/my-logo2\.jpg/g, `${absoluteUrl}/my-logo2.jpg`);
           
           res.send(html);
         } catch (e) {
