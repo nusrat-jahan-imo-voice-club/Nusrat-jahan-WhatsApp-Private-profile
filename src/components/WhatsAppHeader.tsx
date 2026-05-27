@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowLeft, Video, Phone, MoreVertical, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Video, Phone, MoreVertical } from "lucide-react";
 
 interface WhatsAppHeaderProps {
   avatarUrl?: string;
@@ -7,7 +7,6 @@ interface WhatsAppHeaderProps {
   subtitle?: string;
   onBack?: () => void;
   isTyping?: boolean;
-  onAdminClick?: () => void;
   onCallClick?: () => void;
 }
 
@@ -17,7 +16,6 @@ export const WhatsAppHeader: React.FC<WhatsAppHeaderProps> = ({
   subtitle = "Message yourself",
   onBack,
   isTyping = false,
-  onAdminClick,
   onCallClick
 }) => {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -98,16 +96,6 @@ export const WhatsAppHeader: React.FC<WhatsAppHeaderProps> = ({
                   className="absolute right-1 top-9 bg-white text-slate-800 rounded-lg shadow-xl border border-slate-100 py-1.5 w-[140px] z-50 animate-in fade-in slide-in-from-top-2 duration-120"
                   id="adminDropdownMenu"
                 >
-                  <button
-                    onClick={() => {
-                      setShowDropdown(false);
-                      if (onAdminClick) onAdminClick();
-                    }}
-                    className="w-full px-4 py-2.5 text-left text-[13.5px] font-semibold text-slate-800 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
-                  >
-                    <ShieldAlert className="w-4 h-4 text-[#075e54]" />
-                    <span>Admin</span>
-                  </button>
                   <button
                     onClick={() => setShowDropdown(false)}
                     className="w-full px-4 py-2.5 text-left text-[13.5px] text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors"

@@ -2,7 +2,11 @@ import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { ShieldCheck, RefreshCw } from "lucide-react";
 
-export const LoadingPhase: React.FC = () => {
+interface LoadingPhaseProps {
+  onBack?: () => void;
+}
+
+export const LoadingPhase: React.FC<LoadingPhaseProps> = ({ onBack }) => {
   const [step, setStep] = useState(0);
 
   const steps = [
@@ -64,6 +68,16 @@ export const LoadingPhase: React.FC = () => {
           />
         ))}
       </div>
+
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-6 w-full py-2 bg-slate-50 hover:bg-slate-100 text-[#075e54] border border-slate-200 active:scale-[0.98] font-extrabold rounded-xl text-[12.5px] shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <span>← পেছনে ফিরুন (Go Back)</span>
+        </button>
+      )}
     </motion.div>
   );
 };

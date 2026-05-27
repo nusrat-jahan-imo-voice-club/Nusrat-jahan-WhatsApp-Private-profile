@@ -4,9 +4,10 @@ import { motion } from "motion/react";
 
 interface SuccessPhaseProps {
   onStartChat: () => void;
+  onBack?: () => void;
 }
 
-export const SuccessPhase: React.FC<SuccessPhaseProps> = ({ onStartChat }) => {
+export const SuccessPhase: React.FC<SuccessPhaseProps> = ({ onStartChat, onBack }) => {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -39,6 +40,16 @@ export const SuccessPhase: React.FC<SuccessPhaseProps> = ({ onStartChat }) => {
         <MessageSquare className="w-4 h-4 text-white fill-white" />
         <span>চ্যাট শুরু করুন</span>
       </button>
+
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-4 w-full py-2 bg-slate-50 hover:bg-slate-100 text-[#075e54] border border-slate-200 active:scale-[0.98] font-extrabold rounded-xl text-[12.5px] shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <span>← পেছনে ফিরুন (Go Back)</span>
+        </button>
+      )}
     </motion.div>
   );
 };

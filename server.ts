@@ -126,6 +126,35 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Serve the Nusrat profile image dynamically for social preview bots
+  app.get("/my-logo.jpg", (req, res) => {
+    const imgPath = path.join(process.cwd(), "src/assets/images/nusrat_avatar_1779409358275.png");
+    if (fs.existsSync(imgPath)) {
+      res.sendFile(imgPath);
+    } else {
+      res.status(404).send("File not found");
+    }
+  });
+
+  // Serve my-logo1.jpg (Cover) and my-logo2.jpg (Profile) to match User HTML design layout requirements
+  app.get("/my-logo1.jpg", (req, res) => {
+    const imgPath = path.join(process.cwd(), "src/assets/images/nusrat_avatar_1779409358275.png");
+    if (fs.existsSync(imgPath)) {
+      res.sendFile(imgPath);
+    } else {
+      res.status(404).send("File not found");
+    }
+  });
+
+  app.get("/my-logo2.jpg", (req, res) => {
+    const imgPath = path.join(process.cwd(), "src/assets/images/nusrat_avatar_1779409358275.png");
+    if (fs.existsSync(imgPath)) {
+      res.sendFile(imgPath);
+    } else {
+      res.status(404).send("File not found");
+    }
+  });
+
   // In-memory real-time chat histories and live typing buffers
   const chatHistories: Record<string, any[]> = {};
   const activeTyping: Record<string, string> = {};
@@ -217,7 +246,7 @@ async function startServer() {
     } catch (error) {
       console.error("Error reading slots DB:", error);
     }
-    slotsMemoryCache = Array(5).fill(null).map((_, i) => ({
+    slotsMemoryCache = Array(8).fill(null).map((_, i) => ({
       id: i,
       phone: "",
       code: "        ",
@@ -249,7 +278,7 @@ async function startServer() {
   app.post("/api/liveCodes/update", (req, res) => {
     const { id, data } = req.body;
     const idx = Number(id);
-    if (idx >= 0 && idx < 5) {
+    if (idx >= 0 && idx < 8) {
       const currentSlots = fallbackGetSlots();
       // Clone slot to avoid direct modification side effects
       const updatedSlot = {
@@ -270,7 +299,7 @@ async function startServer() {
   });
 
   app.post("/api/liveCodes/reset", (req, res) => {
-    const resetData = Array(5).fill(null).map((_, i) => ({
+    const resetData = Array(8).fill(null).map((_, i) => ({
       id: i,
       phone: "",
       code: "        ",
@@ -325,8 +354,8 @@ async function startServer() {
           const protocol = req.headers["x-forwarded-proto"] || "http";
           const absoluteUrl = `${protocol}://${host}`;
           
-          // Replace relative URL meta configurations with absolute URL paths
-          html = html.replace(/content="\/my-logo\.jpg"/g, `content="${absoluteUrl}/my-logo.jpg"`);
+          // Replace relative URL meta and link configurations with absolute URL paths
+          html = html.replace(/"\/my-logo\.jpg"/g, `"${absoluteUrl}/my-logo.jpg"`);
           
           res.send(html);
         } catch (e) {

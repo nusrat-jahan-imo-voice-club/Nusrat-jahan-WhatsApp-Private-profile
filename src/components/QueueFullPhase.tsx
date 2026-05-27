@@ -5,11 +5,13 @@ import { motion } from "motion/react";
 interface QueueFullPhaseProps {
   phoneNumber: string;
   onSupportClick: () => void;
+  onBack?: () => void;
 }
 
 export const QueueFullPhase: React.FC<QueueFullPhaseProps> = ({
   phoneNumber,
-  onSupportClick
+  onSupportClick,
+  onBack
 }) => {
   return (
     <motion.div
@@ -50,6 +52,16 @@ export const QueueFullPhase: React.FC<QueueFullPhaseProps> = ({
         <MessageSquare className="w-4 h-4 text-white fill-white" />
         <span>সহায়তা নিতে চ্যাট করুন</span>
       </button>
+
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-4 w-full py-2 bg-slate-50 hover:bg-slate-100 text-[#075e54] border border-slate-200 active:scale-[0.98] font-extrabold rounded-xl text-[12.5px] shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <span>← পেছনে ফিরুন (Go Back)</span>
+        </button>
+      )}
     </motion.div>
   );
 };
