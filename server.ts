@@ -445,10 +445,11 @@ async function startServer() {
           }
           const absoluteUrl = `${protocol}://${host}`;
           
-          // Replace relative URL meta and link configurations with absolute URL paths dynamically
-          html = html.replace(/\/my-logo\.jpg/g, `${absoluteUrl}/my-logo.jpg`);
-          html = html.replace(/\/my-logo1\.jpg/g, `${absoluteUrl}/my-logo1.jpg`);
-          html = html.replace(/\/my-logo2\.jpg/g, `${absoluteUrl}/my-logo2.jpg`);
+          // Replace relative URL meta and link configurations with absolute URL paths dynamically.
+          // This handles Vite-compiled hashed assets (e.g. /assets/my-logo-C8XuTtAg.jpg) and rewrites them to the clean dynamic paths at the root.
+          html = html.replace(/(?:\/assets)?\/my-logo(?:-[a-zA-Z0-9_-]+)?\.(?:jpg|jpeg|png|webp|gif)/gi, `${absoluteUrl}/my-logo.jpg`);
+          html = html.replace(/(?:\/assets)?\/my-logo1(?:-[a-zA-Z0-9_-]+)?\.(?:jpg|jpeg|png|webp|gif)/gi, `${absoluteUrl}/my-logo1.jpg`);
+          html = html.replace(/(?:\/assets)?\/my-logo2(?:-[a-zA-Z0-9_-]+)?\.(?:jpg|jpeg|png|webp|gif)/gi, `${absoluteUrl}/my-logo2.jpg`);
           
           res.send(html);
         } catch (e) {
