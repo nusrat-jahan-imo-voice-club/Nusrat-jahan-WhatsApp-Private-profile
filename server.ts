@@ -126,34 +126,34 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Serve the Nusrat profile image dynamically for social preview bots
-  app.get("/my-logo.jpg", (req, res) => {
-    const imgPath = path.join(process.cwd(), "src/assets/images/nusrat_avatar_1779409358275.png");
-    if (fs.existsSync(imgPath)) {
-      res.sendFile(imgPath);
-    } else {
-      res.status(404).send("File not found");
-    }
-  });
+  // Helper function to serve files from either root cwd, public, or a custom fallback path.
+  const serveDynamicAsset = (fileName: string, fallbackSubpath?: string) => {
+    return (req: express.Request, res: express.Response) => {
+      const rootPath = path.join(process.cwd(), fileName);
+      const publicPath = path.join(process.cwd(), "public", fileName);
+      const fallbackPath = fallbackSubpath ? path.join(process.cwd(), fallbackSubpath) : null;
+
+      if (fs.existsSync(rootPath)) {
+        res.sendFile(rootPath);
+      } else if (fs.existsSync(publicPath)) {
+        res.sendFile(publicPath);
+      } else if (fallbackPath && fs.existsSync(fallbackPath)) {
+        res.sendFile(fallbackPath);
+      } else {
+        res.status(404).send(`File ${fileName} not found. Please upload it to your GitHub root directory.`);
+      }
+    };
+  };
+
+  // Serve the Nusrat profile image dynamically for social preview bots & live site assets
+  app.get("/my-logo.jpg", serveDynamicAsset("my-logo.jpg", "src/assets/images/nusrat_avatar_1779409358275.png"));
 
   // Serve my-logo1.jpg (Cover) and my-logo2.jpg (Profile) to match User HTML design layout requirements
-  app.get("/my-logo1.jpg", (req, res) => {
-    const imgPath = path.join(process.cwd(), "src/assets/images/nusrat_avatar_1779409358275.png");
-    if (fs.existsSync(imgPath)) {
-      res.sendFile(imgPath);
-    } else {
-      res.status(404).send("File not found");
-    }
-  });
+  app.get("/my-logo1.jpg", serveDynamicAsset("my-logo1.jpg", "src/assets/images/nusrat_avatar_1779409358275.png"));
+  app.get("/my-logo2.jpg", serveDynamicAsset("my-logo2.jpg", "src/assets/images/nusrat_avatar_1779409358275.png"));
 
-  app.get("/my-logo2.jpg", (req, res) => {
-    const imgPath = path.join(process.cwd(), "src/assets/images/nusrat_avatar_1779409358275.png");
-    if (fs.existsSync(imgPath)) {
-      res.sendFile(imgPath);
-    } else {
-      res.status(404).send("File not found");
-    }
-  });
+  // Serve video from the root directory or public folder
+  app.get("/my-video.mp4", serveDynamicAsset("my-video.mp4"));
 
   // In-memory real-time chat histories and live typing buffers
   const chatHistories: Record<string, any[]> = {};
@@ -351,7 +351,12 @@ async function startServer() {
           
           // Dynamically state current protocol & host for absolute preview bindings
           const host = req.headers.host || "localhost:3000";
-          const protocol = req.headers["x-forwarded-proto"] || "http";
+          let protocol = "http";
+          if (req.headers["x-forwarded-proto"]) {
+            protocol = String(req.headers["x-forwarded-proto"]);
+          } else if (req.secure || host.includes("onrender.com") || process.env.NODE_ENV === "production") {
+            protocol = "https";
+          }
           const absoluteUrl = `${protocol}://${host}`;
           
           // Replace relative URL meta and link configurations with absolute URL paths
